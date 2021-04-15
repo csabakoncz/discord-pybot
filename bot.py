@@ -14,7 +14,7 @@ async def on_ready():
     print(f'{client.user} has connected to Discord!')
 
 @client.event
-async def on_message(message):
+async def on_message(message: discord.message.Message):
     if message.author == client.user:
         return
 
