@@ -5,11 +5,13 @@ import sys
 import discord
 from dotenv import load_dotenv
 import hupper
+import eliza
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 client = discord.Client()
+therapists = {}
 
 @client.event
 async def on_ready():
@@ -26,6 +28,18 @@ async def on_message(message: discord.message.Message):
 
     if message.content.lower() == 'ping':
         await message.channel.send('Pong!')
+
+    other = message.author.display_name
+
+    therapist = therapists.get(other)
+    if therapist:
+        await message.reply(therapist.respond(message.content))
+        if message.content == 'quit':
+            del therapists[other]
+    elif message.content == 'Eliza?':
+        therapist = eliza.eliza()
+        therapists[other] = therapist
+        await message.reply("Hello.  How are you feeling today?")
 
 def main(args=sys.argv[1:]):
     if '--reload' in args:
