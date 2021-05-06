@@ -70,6 +70,12 @@ async def on_ready():
     print(f'{client.user} has connected to Discord!')
 
 
+def get_command_option(command_data, name):
+    opts = [opt for opt in command_data['options'] if opt['name'] == name]
+    if opts:
+        return opts[0]['value']
+
+
 @client.event
 async def on_interaction(i: Interaction):
     log.info('interaction channel=%s', i.channel)
@@ -77,10 +83,24 @@ async def on_interaction(i: Interaction):
     iid = i.data['id']
     itoken = i.data['token']
 
+    msg = 'What?'
+    greet_command = '%s-greet' % client.user.name.lower()
+
+    command_data = i.data['data']
+
+    if command_data['name'] == greet_command:
+        greetee = get_command_option(command_data, 'name')
+        age = get_command_option(command_data, 'age')
+
+        if age is not None:
+            greetee += ' (%s)' % age
+
+        msg = 'Hello, %s!' % greetee
+
     payload = {
         'type': 4,
         'data': {
-            'content': 'What?'
+            'content': msg
         }
     }
 
