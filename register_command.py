@@ -51,31 +51,44 @@ async def main():
             commands_path = '/applications/%s/guilds/%s/commands' % (
                 app_data['id'], g['id'])
 
-            data = {
-                "name": app_name+"-greet",
-                "description": "Greets you",
-                "options": [
-                    {
-                        "type": 3,
-                        "name": "name",
-                        "description": "Your name",
-                        "required": True
-                    },
-                    {
-                        "type": 4,
-                        "name": "age",
-                        "description": "Your age"
-                    }
-                ]
-            }
-
-            command = await post(session, path=commands_path, json=data)
-            print('command created = %s' % JSON.dumps(command, indent=2))
+            await create_greeter(session, app_name, commands_path)
+            await create_foci_ma(session, app_name, commands_path)
 
             commands = await get(session, commands_path)
             print('all commands in this guild = %s' %
                   JSON.dumps(commands, indent=2))
 
+
+async def create_greeter(session, app_name, commands_path):
+    data = {
+        "name": app_name+"-greet",
+        "description": "Greets you",
+        "options": [
+            {
+                "type": 3,
+                "name": "name",
+                "description": "Your name",
+                "required": True
+            },
+            {
+                "type": 4,
+                "name": "age",
+                "description": "Your age"
+            }
+        ]
+    }
+
+    command = await post(session, path=commands_path, json=data)
+    print('command created = %s' % JSON.dumps(command, indent=2))
+
+async def create_foci_ma(session, app_name, commands_path):
+    data = {
+        "name": app_name+"-foci-ma",
+        "description": "Todays football matches"
+    }
+
+    command = await post(session, path=commands_path, json=data)
+    print('command created = %s' % JSON.dumps(command, indent=2))
 
 asyncio.run(main(), debug=False)
 # loop = asyncio.get_event_loop()

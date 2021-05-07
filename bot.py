@@ -1,10 +1,13 @@
 # bot.py
+import aiohttp
 import eliza
 import hupper
+import json
 from dotenv import load_dotenv
 from discord.ext import commands
 from discord.http import HTTPClient, Route
 from discord.message import Message
+from discord.embeds import Embed
 from discord.state import ConnectionState
 import discord
 import os
@@ -26,6 +29,7 @@ log = logging.getLogger('bot.py')
 log.info('info level works')
 
 TOKEN = os.getenv('DISCORD_TOKEN')
+FOOTBALL_DATA_TOKEN = os.getenv('FOOTBALL_DATA_TOKEN')
 
 intents = discord.Intents.default()
 intents.members = True
@@ -84,7 +88,10 @@ async def on_interaction(i: Interaction):
     itoken = i.data['token']
 
     msg = 'What?'
+    embeds = []
+
     greet_command = '%s-greet' % client.user.name.lower()
+    todays_matches = '%s-foci-ma' % client.user.name.lower()
 
     command_data = i.data['data']
 
@@ -96,11 +103,15 @@ async def on_interaction(i: Interaction):
             greetee += ' (%s)' % age
 
         msg = 'Hello, %s!' % greetee
+    elif command_data['name'] == todays_matches:
+        embed = await get_todays_matches()
+        embeds.append(embed)
 
     payload = {
         'type': 4,
         'data': {
-            'content': msg
+            'content': msg,
+            'embeds': embeds
         }
     }
 
@@ -109,9 +120,64 @@ async def on_interaction(i: Interaction):
     await http_client.request(route, json=payload)
 
 
-@client.event
+async def get_todays_matches():
+    resp = await do_get_todays_matches()
+    count = resp['count']
+    return {
+        'color': 0x0099ff,
+        'title': 'Football',
+        'type': 'rich',
+        'fields': [
+            {
+                'name': TODAYS_MATCHES,
+                'value': '%s' % count,
+            },
+        ]}
+
+
+async def do_get_todays_matches():
+    async with aiohttp.ClientSession() as session:
+        url = 'https://api.football-data.org/v2/matches'
+        headers = {"X-Auth-Token": FOOTBALL_DATA_TOKEN}
+
+        request_context = session.request(
+            method='GET', url=url, headers=headers)
+
+        async with request_context as response:
+            response_text = await response.text()
+            return json.loads(response_text)
+
+TODAYS_MATCHES = "Today's matches:"
+
+
+async def send_matches(message: discord.message.Message):
+    resp = await do_get_todays_matches()
+    for m in resp['matches']:
+        e = Embed()
+        e.title = m['competition']['name']
+        e.description = m['competition']['area']['name']
+        e.set_image(url=m['competition']['area']['ensignUrl'])
+        e.add_field(name='Time', value=m['utcDate'],inline=False)
+        e.add_field(name='Status', value=m['status'],inline=False)
+        e.add_field(name=m['homeTeam']['name'], value=m['score']
+                    ['fullTime']['homeTeam'], inline=True)
+        e.add_field(name=m['awayTeam']['name'], value=m['score']
+                    ['fullTime']['awayTeam'], inline=True)
+
+        await message.reply(embed=e)
+
+
+@ client.event
 async def on_message(message: discord.message.Message):
     if message.author == client.user:
+        # check our own messages:
+        if len(message.embeds) == 1:
+            e: Embed = message.embeds[0]
+            if e.title == 'Football':
+                f0 = e.fields[0]
+                if f0.name == TODAYS_MATCHES:
+                    await send_matches(message)
+
         return
 
     log.info('message received: %s', message.content)
